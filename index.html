@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1d5f63">
+  <title>Progress Note Builder</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #172124;
+      --muted: #607174;
+      --line: #d7e1e2;
+      --soft: #eef6f5;
+      --panel: #ffffff;
+      --primary: #1d5f63;
+      --primary-dark: #16494c;
+      --accent: #b84c35;
+      --ok: #28704b;
+      --warn: #a05d00;
+      --shadow: 0 18px 48px rgba(20, 42, 45, .14);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(184, 76, 53, .12), transparent 34rem),
+        linear-gradient(180deg, #f7fbfa 0%, #eef5f3 52%, #f8faf9 100%);
+      color: var(--ink);
+    }
+
+    button,
+    input,
+    textarea,
+    select {
+      font: inherit;
+    }
+
+    .app {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 18px 14px 44px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 2px 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 8px;
+      background: var(--primary);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 8px 18px rgba(29, 95, 99, .25);
+    }
+
+    .brand svg {
+      width: 25px;
+      height: 25px;
+      stroke: #fff;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 5vw, 2.4rem);
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: .95rem;
+    }
+
+    .status {
+      display: none;
+      color: var(--primary-dark);
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    .panel,
+    .note-output {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel {
+      overflow: hidden;
+    }
+
+    .section {
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 0 0 14px;
+      font-size: 1.02rem;
+      font-weight: 800;
+    }
+
+    .section-title svg {
+      width: 20px;
+      height: 20px;
+      stroke: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      color: var(--muted);
+      font-size: .86rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      min-height: 46px;
+      border: 1px solid #bfced0;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      padding: 11px 12px;
+      outline: none;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 88px;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(29, 95, 99, .14);
+    }
+
+    .question-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .field-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .question {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 12px;
+      background: #fbfdfd;
+    }
+
+    .question-head {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .question-text {
+      margin: 0;
+      font-weight: 800;
+      line-height: 1.28;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 132px;
+      border: 1px solid #b6c7c9;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .segmented button {
+      min-height: 40px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .segmented button + button {
+      border-left: 1px solid #d8e2e3;
+    }
+
+    .segmented button.active.yes {
+      background: #e5f4ec;
+      color: var(--ok);
+    }
+
+    .segmented button.active.no {
+      background: #fff0e4;
+      color: var(--warn);
+    }
+
+    .detail {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .detail.show {
+      display: block;
+    }
+
+    .actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(248, 250, 249, .2), rgba(248, 250, 249, .96) 28%);
+    }
+
+    .btn {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-weight: 850;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn svg {
+      width: 19px;
+      height: 19px;
+      flex: 0 0 auto;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #e7efef;
+      color: var(--primary-dark);
+    }
+
+    .btn-danger {
+      background: #f6e7e2;
+      color: #7f2f21;
+    }
+
+    .note-output {
+      padding: 18px;
+    }
+
+    .output-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .output-head h2 {
+      margin: 0;
+      font-size: 1.12rem;
+    }
+
+    .mini-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fff;
+      color: var(--primary-dark);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+    }
+
+    .icon-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    #noteText {
+      width: 100%;
+      min-height: 480px;
+      white-space: pre-wrap;
+      line-height: 1.48;
+    }
+
+    .ai-box {
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .ai-box label {
+      margin-top: 0;
+    }
+
+    #aiPrompt {
+      min-height: 170px;
+      font-size: .92rem;
+    }
+
+    .ai-actions {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .privacy {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.45;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: calc(78px + env(safe-area-inset-bottom));
+      transform: translateX(-50%) translateY(16px);
+      background: #142b2d;
+      color: #fff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: opacity .18s ease, transform .18s ease;
+      pointer-events: none;
+      font-weight: 800;
+      z-index: 10;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (min-width: 860px) {
+      .app {
+        padding-top: 24px;
+      }
+
+      .layout {
+        grid-template-columns: minmax(0, 1.02fr) minmax(360px, .78fr);
+        align-items: start;
+      }
+
+      .note-output {
+        position: sticky;
+        top: 18px;
+      }
+
+      .status {
+        display: block;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .question-head {
+        grid-template-columns: 1fr;
+      }
+
+      .segmented {
+        width: 100%;
+      }
+
+      .actions {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+      }
+
+      .section,
+      .note-output {
+        padding: 14px;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .topbar,
+      .panel,
+      .actions,
+      .mini-actions,
+      .privacy {
+        display: none;
+      }
+
+      .app,
+      .layout,
+      .note-output {
+        display: block;
+        max-width: none;
+        margin: 0;
+        padding: 0;
+        border: 0;
+        box-shadow: none;
+      }
+
+      #noteText {
+        border: 0;
+        padding: 0;
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3h8l2 3v15H6V6l2-3Z"></path>
+            <path d="M9 10h6"></path>
+            <path d="M9 14h6"></path>
+            <path d="M9 18h3"></path>
+          </svg>
+        </div>
+        <div>
+          <h1>Progress Note Builder</h1>
+          <p class="subtitle">Answer the questions, then copy the note.</p>
+        </div>
+      </div>
+      <div class="status" id="completeCount">0 answered</div>
+    </header>
+
+    <div class="layout">
+      <form class="panel" id="noteForm">
+        <section class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M8 7a4 4 0 1 0 8 0"></path>
+              <path d="M5 22a7 7 0 0 1 14 0"></path>
+            </svg>
+            Shift details
+          </h2>
+          <div class="grid">
+            <div>
+              <label for="participantName">Participant name</label>
+              <input id="participantName" autocomplete="name" placeholder="Name">
+            </div>
+            <div>
+              <label for="workerName">Staff name</label>
+              <input id="workerName" autocomplete="name" placeholder="Your name">
+            </div>
+            <div>
+              <label for="pronoun">Participant pronoun</label>
+              <select id="pronoun">
+                <option value="he">He / him</option>
+                <option value="she">She / her</option>
+                <option value="they">They / them</option>
+              </select>
+            </div>
+            <div>
+              <label for="shiftDate">Date</label>
+              <input id="shiftDate" type="date">
+            </div>
+            <div>
+              <label for="shiftTime">Time</label>
+              <input id="shiftTime" placeholder="e.g. 9:00am to 1:00pm">
+            </div>
+            <div>
+              <label for="location">Location</label>
+              <input id="location" placeholder="e.g. centre, home, community">
+            </div>
+            <div>
+              <label for="arrivalMood">Mood on arrival</label>
+              <select id="arrivalMood">
+                <option>Happy and calm</option>
+                <option>Happy</option>
+                <option>Calm</option>
+                <option>Content</option>
+                <option>Tired</option>
+                <option>Anxious</option>
+                <option>Upset</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m9 11 3 3L22 4"></path>
+              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+            Daily support questions
+          </h2>
+          <div class="field-list">
+            <div class="grid">
+              <div>
+                <label for="morningTea">Morning tea?</label>
+                <select id="morningTea">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="morningTeaDetails">Morning tea details</label>
+                <input id="morningTeaDetails" placeholder="e.g. fruit, biscuits, drink">
+              </div>
+              <div>
+                <label for="peers">Interacted with peers?</label>
+                <select id="peers">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="staff">Interacted with staff?</label>
+                <select id="staff">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="program">Program / activity</label>
+                <input id="program" placeholder="e.g. fishing, cooking, shopping">
+              </div>
+              <div>
+                <label for="programLocation">Program location</label>
+                <input id="programLocation" placeholder="e.g. Bobbin Head">
+              </div>
+              <div>
+                <label for="participated">Participated?</label>
+                <select id="participated">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="enjoyed">Enjoyed activity?</label>
+                <select id="enjoyed">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="medication">Medication support?</label>
+                <select id="medication">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="medTime">Medication time</label>
+                <input id="medTime" placeholder="e.g. 12:00pm">
+              </div>
+              <div>
+                <label for="lunch">Lunch details</label>
+                <input id="lunch" placeholder="e.g. sandwich and fruit">
+              </div>
+              <div>
+                <label for="eaten">Percentage eaten</label>
+                <select id="eaten">
+                  <option></option>
+                  <option>100%</option>
+                  <option>75%</option>
+                  <option>50%</option>
+                  <option>25%</option>
+                  <option>Refused</option>
+                </select>
+              </div>
+              <div>
+                <label for="fluids">Fluid intake</label>
+                <input id="fluids" placeholder="e.g. water throughout the day">
+              </div>
+              <div>
+                <label for="toilet">Toileted independently?</label>
+                <select id="toilet">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="assist">Staff assistance required?</label>
+                <select id="assist">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="incontinent">Incontinence?</label>
+                <select id="incontinent">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="pad">Pad change completed?</label>
+                <select id="pad">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="behaviour">Behaviours of concern?</label>
+                <select id="behaviour">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="incident">Incident or injury?</label>
+                <select id="incident">
+                  <option>No</option>
+                  <option>Yes</option>
+                </select>
+              </div>
+              <div>
+                <label for="returnCentre">Returned to centre?</label>
+                <select id="returnCentre">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+              <div>
+                <label for="departed">Departed safely?</label>
+                <select id="departed">
+                  <option>Yes</option>
+                  <option>No</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <h2 class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a4 4 0 0 1-4 4H7l-4 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+            </svg>
+            Extra details
+          </h2>
+          <div class="grid">
+            <div>
+              <label for="achievement">Achievements / highlights</label>
+              <textarea id="achievement" placeholder="e.g. caught a fish, helped pack up, used kind words"></textarea>
+            </div>
+            <div>
+              <label for="comments">Additional comments</label>
+              <textarea id="comments" placeholder="Any extra details about mood, behaviour, health, or support"></textarea>
+            </div>
+            <div>
+              <label for="handover">Handover or next shift notes</label>
+              <textarea id="handover" placeholder="Anything the next staff member or coordinator needs to know"></textarea>
+            </div>
+            <div>
+              <label for="customText">Anything you want included in the paragraph</label>
+              <textarea id="customText" placeholder="Write natural wording here and it will be added to the note"></textarea>
+            </div>
+          </div>
+        </section>
+      </form>
+
+      <aside class="note-output" aria-label="Generated progress note">
+        <div class="output-head">
+          <h2>Generated note</h2>
+          <div class="mini-actions">
+            <button class="icon-btn" type="button" id="copyBtn" title="Copy note" aria-label="Copy note">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+            <button class="icon-btn" type="button" id="printBtn" title="Print or save PDF" aria-label="Print or save PDF">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 9V2h12v7"></path>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <path d="M6 14h12v8H6z"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <textarea id="noteText" aria-label="Generated note text"></textarea>
+        <div class="ai-box">
+          <label for="aiPrompt">AI prompt for ChatGPT</label>
+          <textarea id="aiPrompt" aria-label="AI prompt for ChatGPT"></textarea>
+          <div class="ai-actions">
+            <button class="btn btn-secondary" type="button" id="copyPromptBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+              Copy AI prompt
+            </button>
+          </div>
+        </div>
+        <p class="privacy">This page runs on your device. It does not send notes anywhere. Please check your organisation's wording, privacy, and reporting requirements before submitting a note.</p>
+      </aside>
+    </div>
+
+    <div class="actions" aria-label="Form actions">
+      <button class="btn btn-secondary" type="button" id="clearBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4h8v2"></path>
+          <path d="m19 6-1 14H6L5 6"></path>
+        </svg>
+        Clear
+      </button>
+      <button class="btn btn-primary" type="button" id="generateBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3v18"></path>
+          <path d="M5 12h14"></path>
+        </svg>
+        Generate note
+      </button>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">Copied</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const questionIds = [
+      "morningTea",
+      "peers",
+      "staff",
+      "participated",
+      "enjoyed",
+      "medication",
+      "toilet",
+      "assist",
+      "incontinent",
+      "pad",
+      "behaviour",
+      "incident",
+      "returnCentre",
+      "departed"
+    ];
+
+    function todayForInput() {
+      const now = new Date();
+      const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+      return local.toISOString().slice(0, 10);
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      const date = new Date(value + "T00:00:00");
+      return date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
+    }
+
+    function clean(value) {
+      return String(value || "").trim();
+    }
+
+    function sentence(value) {
+      const text = clean(value);
+      if (!text) return "";
+      return /[.!?]$/.test(text) ? text : text + ".";
+    }
+
+    function lower(value) {
+      return clean(value).toLowerCase();
+    }
+
+    function yes(id) {
+      return $(id).value === "Yes";
+    }
+
+    function no(id) {
+      return $(id).value === "No";
+    }
+
+    function answered(id) {
+      return $(id).value === "Yes" || $(id).value === "No";
+    }
+
+    function prepareQuestionSelects() {
+      questionIds.forEach((id) => {
+        const field = $(id);
+        if (field && field.options[0] && field.options[0].value !== "") {
+          field.add(new Option("Select", ""), 0);
+          field.value = "";
+        }
+      });
+    }
+
+    function pronouns() {
+      const value = $("pronoun").value;
+      if (value === "she") return { subject: "she", object: "her", possessive: "her", verb: "was" };
+      if (value === "they") return { subject: "they", object: "them", possessive: "their", verb: "were" };
+      return { subject: "he", object: "him", possessive: "his", verb: "was" };
+    }
+
+    function joinSentences(lines) {
+      return lines.filter(Boolean).join(" ");
+    }
+
+    function answerText(id) {
+      return answered(id) ? $(id).value : "Not answered";
+    }
+
+    function buildAiPrompt(draftNote) {
+      const participant = clean($("participantName").value) || "Participant";
+      const worker = clean($("workerName").value) || "Support worker";
+      const date = formatDate($("shiftDate").value) || "Date not entered";
+      const promptLines = [
+        "Please write a professional NDIS/support-worker progress note based on the information below.",
+        "Write it as one natural paragraph in simple clear language.",
+        "You may add reasonable professional wording, flow, and detail suggestions to make the note read naturally.",
+        "Keep the wording objective, respectful, and suitable for a support note.",
+        "",
+        `Participant: ${participant}`,
+        `Staff: ${worker}`,
+        `Date: ${date}`,
+        `Time: ${clean($("shiftTime").value) || "Not entered"}`,
+        `Main location: ${clean($("location").value) || "Not entered"}`,
+        `Pronoun: ${$("pronoun").selectedOptions[0].text}`,
+        `Mood on arrival: ${clean($("arrivalMood").value) || "Not entered"}`,
+        `Morning tea: ${answerText("morningTea")}`,
+        `Morning tea details: ${clean($("morningTeaDetails").value) || "Not entered"}`,
+        `Interacted with peers: ${answerText("peers")}`,
+        `Interacted with staff: ${answerText("staff")}`,
+        `Program/activity: ${clean($("program").value) || "Not entered"}`,
+        `Program location: ${clean($("programLocation").value) || "Not entered"}`,
+        `Participated: ${answerText("participated")}`,
+        `Enjoyed activity: ${answerText("enjoyed")}`,
+        `Medication support: ${answerText("medication")}`,
+        `Medication time: ${clean($("medTime").value) || "Not entered"}`,
+        `Lunch: ${clean($("lunch").value) || "Not entered"}`,
+        `Meal amount eaten: ${clean($("eaten").value) || "Not entered"}`,
+        `Fluid intake: ${clean($("fluids").value) || "Not entered"}`,
+        `Toileted independently: ${answerText("toilet")}`,
+        `Staff assistance required: ${answerText("assist")}`,
+        `Incontinence: ${answerText("incontinent")}`,
+        `Pad change completed: ${answerText("pad")}`,
+        `Behaviours of concern: ${answerText("behaviour")}`,
+        `Incident or injury: ${answerText("incident")}`,
+        `Returned to centre: ${answerText("returnCentre")}`,
+        `Departed safely: ${answerText("departed")}`,
+        `Achievements/highlights: ${clean($("achievement").value) || "Not entered"}`,
+        `Additional comments: ${clean($("comments").value) || "Not entered"}`,
+        `Handover/follow-up: ${clean($("handover").value) || "Not entered"}`,
+        `Extra wording to include: ${clean($("customText").value) || "Not entered"}`,
+        "",
+        "Current draft from the website:",
+        draftNote
+      ];
+      return promptLines.join("\n");
+    }
+
+    function updateCount() {
+      const total = questionIds.length;
+      const completed = questionIds.filter(answered).length;
+      $("completeCount").textContent = `${completed} of ${total} answered`;
+    }
+
+    function generateNote() {
+      const participant = clean($("participantName").value) || "Participant";
+      const worker = clean($("workerName").value) || "Support worker";
+      const date = formatDate($("shiftDate").value) || "Date not entered";
+      const time = clean($("shiftTime").value) || "Time not entered";
+      const location = clean($("location").value) || "the centre";
+      const mood = lower($("arrivalMood").value) || "settled";
+      const program = clean($("program").value);
+      const programLocation = clean($("programLocation").value);
+      const morningTeaDetails = clean($("morningTeaDetails").value);
+      const achievement = sentence($("achievement").value);
+      const comments = sentence($("comments").value);
+      const handover = sentence($("handover").value);
+      const customText = sentence($("customText").value);
+      const lunch = clean($("lunch").value);
+      const eaten = clean($("eaten").value);
+      const fluids = clean($("fluids").value);
+      const medTime = clean($("medTime").value);
+      const p = pronouns();
+      const morningTeaLine = yes("morningTea")
+        ? `${p.subject} had morning tea${morningTeaDetails ? " consisting of " + morningTeaDetails : ""}.`
+        : no("morningTea") ? `${p.subject} did not have morning tea.` : "";
+      const peerStaffLine = (() => {
+        if (yes("peers") && yes("staff")) return `${p.subject} interacted well with peers and staff members.`;
+        if (yes("peers")) return `${p.subject} interacted well with peers.`;
+        if (yes("staff")) return `${p.subject} interacted well with staff members.`;
+        if (no("peers") && no("staff")) return `${p.subject} had limited interaction with peers and staff members during the shift.`;
+        if (no("peers")) return `${p.subject} had limited interaction with peers during the shift.`;
+        if (no("staff")) return `${p.subject} had limited interaction with staff members during the shift.`;
+        return "";
+      })();
+      const programLine = program
+        ? `The program today was ${program}${programLocation ? " at " + programLocation : ""}.`
+        : "";
+      const participationLine = (() => {
+        if (!program) return "";
+        const lines = [];
+        if (yes("participated")) lines.push(`${p.subject} participated in the activity`);
+        if (no("participated")) lines.push(`${p.subject} did not actively participate in the activity`);
+        if (yes("enjoyed")) lines.push(`${p.subject} appeared to enjoy the activity`);
+        if (no("enjoyed")) lines.push(`${p.subject} did not appear to fully enjoy the activity today`);
+        return lines.length ? sentence(lines.join(", and ")) : "";
+      })();
+      const medicationLine = yes("medication")
+        ? `Medication support was provided as required${medTime ? " at " + medTime : ""}.`
+        : no("medication") ? "No medication support was required during the shift." : "";
+      const lunchLine = lunch
+        ? `${participant} had ${lunch} for lunch${eaten ? " and consumed " + eaten + " of the meal" : ""}.`
+        : "";
+      const fluidsLine = fluids ? `${participant} consumed ${fluids}.` : "";
+      const personalCareLines = [
+        yes("toilet") ? `${participant} toileted independently.` : no("toilet") ? `${participant} required support with toileting as needed.` : "",
+        yes("assist") ? "Staff provided personal care assistance as required." : no("assist") ? "No staff assistance with personal care was required." : "",
+        yes("incontinent") ? `${participant} experienced an episode of incontinence and staff provided appropriate support.` : no("incontinent") ? "No incontinence was reported." : "",
+        yes("pad") ? "A pad change was completed in accordance with care requirements." : no("pad") ? "No pad change was required." : ""
+      ];
+      const wellbeingLines = [
+        !answered("behaviour") ? "" : yes("behaviour")
+          ? "Behaviours of concern were observed and staff provided support, reassurance, and redirection where required."
+          : "No behaviours of concern were observed.",
+        !answered("incident") ? "" : yes("incident")
+          ? "An incident or injury was recorded and managed according to organisational procedures."
+          : "No incident or injury was observed or reported."
+      ];
+      const departureLine = (() => {
+        if (yes("returnCentre") && yes("departed")) return `${participant} returned to the centre and departed safely at the conclusion of the program.`;
+        if (yes("returnCentre")) return `${participant} returned to the centre following the activity.`;
+        if (yes("departed")) return `${participant} departed safely at the conclusion of the shift.`;
+        return "";
+      })();
+      const paragraph = joinSentences([
+        `${participant} arrived at ${location}${time !== "Time not entered" ? " at " + time : ""}, ${p.subject} appeared ${mood} this morning.`,
+        morningTeaLine,
+        peerStaffLine,
+        programLine,
+        participationLine,
+        achievement ? `Highlights of the day included ${achievement.charAt(0).toLowerCase() + achievement.slice(1)}` : "",
+        medicationLine,
+        lunchLine,
+        fluidsLine,
+        ...personalCareLines,
+        ...wellbeingLines,
+        comments,
+        customText,
+        departureLine,
+        handover ? `Handover: ${handover}` : ""
+      ]);
+
+      const draftNote = [
+        `Progress Note - ${date}`,
+        `Participant: ${participant}`,
+        `Staff: ${worker}`,
+        "",
+        paragraph
+      ].join("\n");
+
+      $("noteText").value = draftNote;
+      $("aiPrompt").value = buildAiPrompt(draftNote);
+    }
+
+    function showToast(message) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    async function copyNote() {
+      generateNote();
+      const text = $("noteText").value;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        $("noteText").focus();
+        $("noteText").select();
+        document.execCommand("copy");
+      }
+      showToast("Note copied");
+    }
+
+    async function copyAiPrompt() {
+      generateNote();
+      const text = $("aiPrompt").value;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (error) {
+        $("aiPrompt").focus();
+        $("aiPrompt").select();
+        document.execCommand("copy");
+      }
+      showToast("AI prompt copied");
+    }
+
+    function clearForm() {
+      if (!confirm("Clear all answers and note text?")) return;
+      $("noteForm").reset();
+      questionIds.forEach((id) => $(id).value = "");
+      $("shiftDate").value = todayForInput();
+      updateCount();
+      generateNote();
+    }
+
+    prepareQuestionSelects();
+    $("shiftDate").value = todayForInput();
+    $("generateBtn").addEventListener("click", () => {
+      generateNote();
+      showToast("Note generated");
+    });
+    $("copyBtn").addEventListener("click", copyNote);
+    $("copyPromptBtn").addEventListener("click", copyAiPrompt);
+    $("printBtn").addEventListener("click", () => {
+      generateNote();
+      window.print();
+    });
+    $("clearBtn").addEventListener("click", clearForm);
+    document.querySelectorAll("input, textarea, select").forEach((field) => {
+      field.addEventListener("input", generateNote);
+      field.addEventListener("change", () => {
+        updateCount();
+        generateNote();
+      });
+    });
+    updateCount();
+    generateNote();
+  </script>
+</body>
+</html>
